@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  MEDICAL
+  ADMIN_STAFF
+  SUPERVISOR
+}
+
+enum PatientStatus {
+  WAITING
+  IN_PROGRESS
+  IN_EXAMINATION
+  WAITING_RESULT
+  READY_FOR_DISCHARGE
+  DISCHARGED
+  TRANSFERRED
+  CANCELLED
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+model User {
+  id           String                @id @default(uuid())
+  email        String                @unique
+  passwordHash String
+  role         Role
+  active       Boolean               @default(true)
+  statusEdits  PatientStatusChange[]
+}
+
+model Patient {
+  id            String                @id @default(uuid())
+  recordNumber  String                @unique
+  firstName     String
+  lastName      String
+  dateOfBirth   DateTime              @db.Date
+  sex           String
+  phone         String
+  residence     String
+  arrivalReason String
+  priority      String
+  comments      String?
+  status        PatientStatus         @default(WAITING)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  statusHistory PatientStatusChange[]
+  reservations  Reservation[]
+
+  @@index([createdAt, id])
+}
+
+model PatientStatusChange {
+  id             String        @id @default(uuid())
+  patientId      String
+  actorId        String
+  previousStatus PatientStatus
+  nextStatus     PatientStatus
+  changedAt      DateTime      @default(now())
+  patient        Patient       @relation(fields: [patientId], references: [id])
+  actor          User          @relation(fields: [actorId], references: [id])
+
+  @@index([patientId, changedAt])
+}
+
+model Reservation {
+  id              String            @id @default(uuid())
+  patientId       String
+  service         String
+  practitioner    String?
+  startsAt        DateTime
+  durationMinutes Int
+  status          ReservationStatus @default(PENDING)
+  patient         Patient           @relation(fields: [patientId], references: [id])
+
+  @@index([startsAt, status])
+}

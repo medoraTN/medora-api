@@ -1,5 +1,24 @@
 # Architecture Technique — Medora
 
+## Démarrage local — Sprint 1
+
+1. Installer les dépendances avec `npm ci`. Créer une base PostgreSQL de développement et une base séparée pour les tests.
+2. Copier `.env.example` vers `.env`. Renseigner les connexions et générer `JWT_SECRET` avec `openssl rand -hex 32`.
+3. Appliquer les migrations avec `npm run db:migrate` et générer le client avec `npm run db:generate`.
+4. Fournir `MEDORA_ADMIN_EMAIL` et `MEDORA_ADMIN_PASSWORD` dans l’environnement local, puis lancer `npm run db:create-admin`. Utiliser des identifiants et des dossiers fictifs en développement.
+5. Démarrer l’API avec `npm run dev`. Vérifier `GET /api/health` sur le port 3000.
+
+`POST /api/auth/login` accepte `email` et `password`, puis renvoie `token` et `user`. Les routes patients exigent un en-tête `Authorization: Bearer <token>`. Les quatre rôles peuvent consulter les dossiers. `ADMIN`, `MEDICAL` et `ADMIN_STAFF` peuvent créer et modifier les dossiers. `ADMIN` et `MEDICAL` peuvent modifier le statut.
+
+- `GET /api/patients` accepte `search`, `status`, `page` et `pageSize`.
+- `POST /api/patients` crée un dossier au statut `WAITING`.
+- `GET /api/patients/:id` inclut l’historique des statuts.
+- `PATCH /api/patients/:id` modifie les données du dossier.
+- `PATCH /api/patients/:id/status` accepte `{ "status": "IN_PROGRESS" }` et écrit l’historique dans la même transaction.
+
+Exécuter `npm run build` et `npm run test:unit`. Pour les tests d’intégration et HTTP, exporter `TEST_DATABASE_URL` dans le shell, appliquer d’abord les migrations à cette base avec `DATABASE_URL="$TEST_DATABASE_URL" npx prisma migrate deploy`, puis lancer `npm run test:integration` et `npm run test:e2e`.
+
+
 ## 1. Architecture backend — Node + Express
 
 Le backend suit la **Clean Architecture** : les règles métier sont isolées des frameworks, de la base de données et d’Express. Les dépendances pointent toujours de l’extérieur vers le domaine.
