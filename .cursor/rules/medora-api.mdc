@@ -1,0 +1,6 @@
+---
+description: Architecture, contrat HTTP et Definition of Done de Medora API
+alwaysApply: true
+---
+
+Appliquer les règles du dépôt dans [AGENTS.md](../../AGENTS.md). Par exemple, placer une transition de statut dans le domaine ou le cas d’usage, puis traduire son résultat en HTTP dans le contrôleur.
