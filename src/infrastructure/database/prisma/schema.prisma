@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PatientStatus {
+  WAITING
+  IN_CARE
+  IN_EXAM
+  AWAITING_RESULTS
+  READY_FOR_DISCHARGE
+  DISCHARGED
+  TRANSFERRED
+  CANCELLED
+}
+
+enum ReservationStatus {
+  CONFIRMED
+  PENDING
+  CANCELLED
+}
+
+enum UserRole {
+  ADMIN
+  MEDICAL_STAFF
+  ADMINISTRATIVE_STAFF
+  EMERGENCY_SUPERVISOR
+}
+
+enum PatientSex {
+  FEMALE
+  MALE
+  OTHER
+  UNKNOWN
+}
+
+model Patient {
+  id            String                 @id @default(cuid())
+  recordNumber  String                 @unique @map("record_number")
+  firstName     String                 @map("first_name")
+  lastName      String                 @map("last_name")
+  dateOfBirth   DateTime               @db.Date @map("date_of_birth")
+  sex           PatientSex             @default(UNKNOWN)
+  phone         String                 @unique
+  address       String?
+  arrivalReason String                 @map("arrival_reason")
+  urgencyLevel  Int                    @map("urgency_level")
+  status        PatientStatus          @default(WAITING)
+  internalNotes String?                @map("internal_notes")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+  reservations  Reservation[]
+  statusHistory PatientStatusHistory[]
+
+  @@index([lastName, firstName])
+  @@index([status])
+  @@map("patients")
+}
+
+model Reservation {
+  id              String            @id @default(cuid())
+  patientId       String            @map("patient_id")
+  patient         Patient           @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  service         String
+  practitioner    String?
+  examination     String?
+  scheduledAt     DateTime          @map("scheduled_at")
+  durationMinutes Int               @map("duration_minutes")
+  status          ReservationStatus @default(PENDING)
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@index([patientId])
+  @@index([scheduledAt, status])
+  @@map("reservations")
+}
+
+model User {
+  id            String                 @id @default(cuid())
+  email         String                 @unique
+  passwordHash  String                 @map("password_hash")
+  firstName     String                 @map("first_name")
+  lastName      String                 @map("last_name")
+  role          UserRole
+  isActive      Boolean                @default(true) @map("is_active")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+  statusChanges PatientStatusHistory[]
+
+  @@map("users")
+}
+
+model PatientStatusHistory {
+  id          String        @id @default(cuid())
+  patientId   String        @map("patient_id")
+  patient     Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  status      PatientStatus
+  changedById String        @map("changed_by_id")
+  changedBy   User          @relation(fields: [changedById], references: [id], onDelete: Restrict)
+  changedAt   DateTime      @default(now()) @map("changed_at")
+
+  @@index([patientId, changedAt])
+  @@map("patient_status_history")
+}

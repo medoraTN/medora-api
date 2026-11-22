@@ -1,7 +1,8 @@
-import { definePrismaConfig } from "prisma/config";
+import "dotenv/config";
+import { defineConfig, env } from "@prisma/prisma7/config";
 
-export default definePrismaConfig({
-  skills: {
-    agents: ["claude", "cursor", "agents", "devin"],
-  },
+export default defineConfig({
+  schema: "src/infrastructure/database/prisma/schema.prisma",
+  migrations: { path: "src/infrastructure/database/prisma/migrations" },
+  datasource: { url: env("DATABASE_URL") },
 });
