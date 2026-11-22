@@ -8,6 +8,20 @@ Copiez `.env.example` vers `.env`, renseignez `DATABASE_URL`, puis lancez `npm r
 
 Le schéma et les migrations se trouvent dans `src/infrastructure/database/prisma/`. Le numéro de dossier et le téléphone patient sont uniques. Ne versionnez jamais `.env` ou des données de patients réelles.
 
+## Utilisateurs et permissions (MED-10)
+
+Gestion administrative des comptes (SPECDOC §4.5), réservée au rôle `ADMIN`. Les mots de passe sont hachés (`scrypt`) et jamais renvoyés.
+
+| Route | Accès | Réponse |
+| :--- | :--- | :--- |
+| `POST /api/users` | `ADMIN` | `201 { user }` ; `409 CONFLICT` si l’e-mail existe déjà |
+| `GET /api/users` | `ADMIN` | `200 { items, pagination }` ; actifs par défaut (`includeInactive=true` pour tout voir) |
+| `GET /api/users/:id` | `ADMIN` | `200 { user }` ; `404` si absent |
+| `PATCH /api/users/:id` | `ADMIN` | `200 { user }` — `role`, `isActive`, `firstName`, `lastName` |
+| `POST /api/users/:id/reset-password` | `ADMIN` | `200 { user }` ; corps `{ password }` (min. 8 caractères) |
+
+Corps de création : `email`, `password` (≥ 8), `firstName`, `lastName`, `role` (`ADMIN` \| `MEDICAL` \| `ADMIN_STAFF` \| `SUPERVISOR`). Tests : `npx jest tests/e2e/users.e2e.spec.ts --runInBand`.
+
 ## Authentification et rôles (MED-3)
 
 L’API utilise un JWT (HS256) transmis dans l’en-tête `Authorization: Bearer <token>`. Les mots de passe sont hachés avec `scrypt` (sel aléatoire par mot de passe) et ne sont jamais stockés ni renvoyés en clair.
