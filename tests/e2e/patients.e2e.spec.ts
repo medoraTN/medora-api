@@ -6,10 +6,12 @@ import { USER_ROLES, type User, type UserRole } from "../../src/domain/entities/
 import { JwtTokenService } from "../../src/infrastructure/auth/jwt.service";
 import { ScryptPasswordHasher } from "../../src/infrastructure/auth/password.service";
 import { InMemoryPatientRepository } from "../support/in-memory-patient.repository";
+import { InMemoryReservationRepository } from "../support/in-memory-reservation.repository";
 import { InMemoryUserRepository } from "../support/in-memory-user.repository";
 
 const users = new InMemoryUserRepository();
 const patients = new InMemoryPatientRepository();
+const reservations = new InMemoryReservationRepository();
 const tokens = new JwtTokenService({ secret: "patients-e2e-secret-that-is-at-least-32-characters" });
 const accounts = {} as Record<UserRole, User>;
 let app: Express;
@@ -58,7 +60,13 @@ beforeEach(async () => {
       isActive: true,
     });
   }
-  app = createApp({ users, patients, passwordHasher: new ScryptPasswordHasher(), tokens });
+  app = createApp({
+    users,
+    patients,
+    reservations,
+    passwordHasher: new ScryptPasswordHasher(),
+    tokens,
+  });
 });
 
 describe("patient endpoints", () => {
@@ -139,13 +147,16 @@ describe("patient endpoints", () => {
     expect(page.body.items).toHaveLength(1);
     expect(page.body).toMatchObject({ pagination: { page: 2, pageSize: 2, total: 3, totalPages: 2 } });
 
-    for (const term of [inputs[0].firstName, inputs[0].recordNumber, inputs[0].phone]) {
+    const sample = inputs[0]!;
+    for (const term of [sample.firstName, sample.recordNumber, sample.phone]) {
       const response = await request(app)
         .get("/api/patients")
         .query({ search: term })
         .set("Authorization", authorization("MEDICAL"));
       expect(response.status).toBe(200);
-      expect(response.body.items).toEqual(expect.arrayContaining([expect.objectContaining({ recordNumber: inputs[0].recordNumber })]));
+      expect(response.body.items).toEqual(
+        expect.arrayContaining([expect.objectContaining({ recordNumber: sample.recordNumber })]),
+      );
     }
   });
 

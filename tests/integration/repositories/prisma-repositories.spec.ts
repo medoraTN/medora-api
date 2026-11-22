@@ -129,6 +129,13 @@ describe("Prisma repositories against PostgreSQL test database", () => {
     await expect(reservations.listByPatient(patient.id)).resolves.toEqual([
       expect.objectContaining({ id: reservation.id }),
     ]);
+    await expect(reservations.list({ page: 1, pageSize: 10, patientId: patient.id, status: "PENDING" }))
+      .resolves.toMatchObject({
+        total: 1,
+        items: [expect.objectContaining({ id: reservation.id })],
+      });
+    await expect(reservations.update(reservation.id, { status: "CONFIRMED", durationMinutes: 45 }))
+      .resolves.toMatchObject({ status: "CONFIRMED", durationMinutes: 45 });
 
     const updated = await patients.updateStatus(patient.id, "WAITING", "IN_PROGRESS", user.id);
     expect(updated.status).toBe("IN_PROGRESS");

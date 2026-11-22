@@ -32,6 +32,20 @@ Les erreurs ont toujours la forme `{ "error": { "code", "message", "details"? } 
 
 Tests : `npm run test:unit` et `npx jest tests/e2e/auth.e2e.spec.ts` (les tests E2E d’authentification utilisent un dépôt utilisateur en mémoire : aucune base de données n’est requise).
 
+## Réservations simples (MED-9)
+
+Les réservations sont protégées par JWT. Statuts : `PENDING`, `CONFIRMED`, `CANCELLED`. Une réservation annulée est terminale. Les transitions autorisées sont `PENDING` ↔ `CONFIRMED` et toute réservation active → `CANCELLED`.
+
+| Route | Rôles | Réponse |
+| :--- | :--- | :--- |
+| `POST /api/reservations` | `ADMIN`, `ADMIN_STAFF`, `MEDICAL` | `201 { reservation }` ; `404` si le patient est inconnu |
+| `GET /api/reservations` | tous les rôles authentifiés | `200 { items, pagination }` ; filtres `from`, `to`, `status`, `patientId`, `page`, `pageSize` |
+| `GET /api/reservations/:id` | tous les rôles authentifiés | `200 { reservation }` ; `404` si absente |
+| `PATCH /api/reservations/:id` | `ADMIN`, `ADMIN_STAFF`, `MEDICAL` | `200 { reservation }` ; `409 INVALID_RESERVATION_STATUS_TRANSITION` si transition invalide ou réservation déjà annulée |
+| `POST /api/reservations/:id/cancel` | `ADMIN`, `ADMIN_STAFF`, `MEDICAL` | `200 { reservation }` avec `status: CANCELLED` |
+
+Corps de création (strict) : `patientId`, `service`, `scheduledAt` (ISO-8601 avec offset), `durationMinutes` (5–1440), optionnels `practitioner`, `examination`, `status`. Les filtres `from`/`to` permettent une vue jour ou semaine côté client. Tests : `npm run test:unit` et `npx jest tests/e2e/reservations.e2e.spec.ts --runInBand`.
+
 ## Statut des patients (MED-5)
 
 `PATCH /api/patients/:id/status` requiert un JWT et est réservé aux rôles `ADMIN` et `MEDICAL`. Le corps contient un statut parmi `WAITING`, `IN_PROGRESS`, `IN_EXAMINATION`, `WAITING_RESULT`, `READY_FOR_DISCHARGE`, `DISCHARGED`, `TRANSFERRED` et `CANCELLED`. Une transition non autorisée renvoie `409 INVALID_STATUS_TRANSITION`; un patient absent renvoie `404 NOT_FOUND` et une valeur invalide `400 VALIDATION_ERROR`.

@@ -8,8 +8,9 @@ import { ScryptPasswordHasher } from "../../src/infrastructure/auth/password.ser
 import { authenticate } from "../../src/presentation/http/middlewares/auth.middleware";
 import { errorHandler } from "../../src/presentation/http/middlewares/error-handler.middleware";
 import { requireRole } from "../../src/presentation/http/middlewares/role.middleware";
-import { InMemoryUserRepository } from "../support/in-memory-user.repository";
 import { InMemoryPatientRepository } from "../support/in-memory-patient.repository";
+import { InMemoryReservationRepository } from "../support/in-memory-reservation.repository";
+import { InMemoryUserRepository } from "../support/in-memory-user.repository";
 
 const SECRET = "e2e-test-secret-that-is-at-least-32-characters";
 const PASSWORD = "S3cure-passw0rd!";
@@ -76,7 +77,13 @@ beforeAll(async () => {
     isActive: false,
   });
 
-app = createApp({ users, patients: new InMemoryPatientRepository(), passwordHasher, tokens });
+app = createApp({
+    users,
+    patients: new InMemoryPatientRepository(),
+    reservations: new InMemoryReservationRepository(),
+    passwordHasher,
+    tokens,
+  });
   probeApp = createProbeApp();
 });
 
