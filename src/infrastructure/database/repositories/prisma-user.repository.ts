@@ -1,0 +1,10 @@
+import type { PrismaClient } from "@prisma/client";
+import type { User } from "../../../domain/entities/user.entity";
+import type { CreateUserRecord, UserRepository } from "../../../domain/repositories/user.repository";
+
+export class PrismaUserRepository implements UserRepository {
+  constructor(private readonly prisma: PrismaClient) {}
+  create(user: CreateUserRecord): Promise<User> { return this.prisma.user.create({ data: user }); }
+  findById(id: string): Promise<User | null> { return this.prisma.user.findUnique({ where: { id } }); }
+  findByEmail(email: string): Promise<User | null> { return this.prisma.user.findUnique({ where: { email } }); }
+}
