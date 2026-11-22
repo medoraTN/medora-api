@@ -9,6 +9,7 @@ import { authenticate } from "../../src/presentation/http/middlewares/auth.middl
 import { errorHandler } from "../../src/presentation/http/middlewares/error-handler.middleware";
 import { requireRole } from "../../src/presentation/http/middlewares/role.middleware";
 import { InMemoryUserRepository } from "../support/in-memory-user.repository";
+import { InMemoryPatientRepository } from "../support/in-memory-patient.repository";
 
 const SECRET = "e2e-test-secret-that-is-at-least-32-characters";
 const PASSWORD = "S3cure-passw0rd!";
@@ -75,7 +76,7 @@ beforeAll(async () => {
     isActive: false,
   });
 
-  app = createApp({ users, passwordHasher, tokens });
+app = createApp({ users, patients: new InMemoryPatientRepository(), passwordHasher, tokens });
   probeApp = createProbeApp();
 });
 

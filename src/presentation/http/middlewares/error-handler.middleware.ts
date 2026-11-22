@@ -6,6 +6,8 @@ import {
   UnauthenticatedError,
 } from "../../../domain/errors/auth-errors";
 import { DomainError } from "../../../domain/errors/domain-error";
+import { ConflictError } from "../../../domain/errors/conflict-error";
+import { NotFoundError } from "../../../domain/errors/not-found-error";
 
 export interface ApiErrorBody {
   error: {
@@ -51,6 +53,14 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
       field: issue.path.join("."),
       message: issue.message,
     })));
+    return;
+  }
+  if (error instanceof NotFoundError) {
+    send(res, 404, error.code, error.message);
+    return;
+  }
+  if (error instanceof ConflictError) {
+    send(res, 409, error.code, error.message);
     return;
   }
   if (error instanceof DomainError) {
