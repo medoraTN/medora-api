@@ -3,7 +3,6 @@ import { prisma } from "../../../src/infrastructure/database/prisma/client";
 import { PrismaPatientRepository } from "../../../src/infrastructure/database/repositories/prisma-patient.repository";
 import { PrismaReservationRepository } from "../../../src/infrastructure/database/repositories/prisma-reservation.repository";
 import { PrismaUserRepository } from "../../../src/infrastructure/database/repositories/prisma-user.repository";
-import { describe } from "node:test";
 
 const patients = new PrismaPatientRepository(prisma);
 const reservations = new PrismaReservationRepository(prisma);
@@ -16,7 +15,7 @@ function newPatient() {
   const id = randomUUID();
   return {
     recordNumber: `TEST-${id}`,
-    firstName: "Integration",
+  firstName: `First-${id.slice(0, 8)}`,
     lastName: "Patient",
     dateOfBirth: new Date("1990-01-01T00:00:00.000Z"),
     sex: "UNKNOWN" as const,
@@ -79,15 +78,36 @@ describe("Prisma repositories against PostgreSQL test database", () => {
     await expect(patients.findById(created.id)).resolves.toMatchObject({ id: created.id, phone: input.phone });
     await expect(patients.findByRecordNumber(input.recordNumber)).resolves.toMatchObject({ id: created.id });
     await expect(patients.findByPhone(input.phone)).resolves.toMatchObject({ id: created.id });
-    await expect(patients.list()).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ id: created.id })]));
+    await expect(patients.list({ page: 1, pageSize: 10, search: input.firstName })).resolves.toMatchObject({
+      items: [expect.objectContaining({ id: created.id })],
+      total: 1,
+    });
+    await expect(patients.list({ page: 1, pageSize: 10, search: input.recordNumber })).resolves.toMatchObject({ total: 1 });
+    await expect(patients.list({ page: 1, pageSize: 10, search: input.phone })).resolves.toMatchObject({ total: 1 });
   });
 
   it("enforces unique dossier number and phone constraints in PostgreSQL", async () => {
     const original = await createPatient();
     await expect(patients.create({ ...newPatient(), recordNumber: original.recordNumber }))
-      .rejects.toMatchObject({ code: "P2002" });
+      .rejects.toMatchObject({ code: "CONFLICT" });
     await expect(patients.create({ ...newPatient(), phone: original.phone }))
-      .rejects.toMatchObject({ code: "P2002" });
+      .rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
+  it("filters and pages patient results with a stable total", async () => {
+    const cohort = `Page-${randomUUID()}`;
+    const created = await Promise.all(Array.from({ length: 3 }, () => patients.create({ ...newPatient(), lastName: cohort })));
+    patientIds.push(...created.map((patient) => patient.id));
+
+    const firstPage = await patients.list({ page: 1, pageSize: 2, search: cohort });
+    const secondPage = await patients.list({ page: 2, pageSize: 2, search: cohort });
+
+    expect(firstPage).toMatchObject({ page: 1, pageSize: 2, total: 3, totalPages: 2 });
+    expect(firstPage.items).toHaveLength(2);
+    expect(secondPage).toMatchObject({ page: 2, pageSize: 2, total: 3, totalPages: 2 });
+    expect(secondPage.items).toHaveLength(1);
+    expect([...firstPage.items, ...secondPage.items].map((patient) => patient.id).sort())
+      .toEqual(created.map((patient) => patient.id).sort());
   });
 
   it("persists users and reservations and records status changes transactionally", async () => {

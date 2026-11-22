@@ -1,5 +1,7 @@
 # Architecture Technique — Medora
 
+
+
 ## Configuration de la base de données
 
 Copiez `.env.example` vers `.env`, renseignez `DATABASE_URL`, puis lancez `npm run db:generate` et `npm run db:migrate`. Une base PostgreSQL isolée pour l’intégration est définie dans `docker-compose.test.yml`; démarrez-la avec `docker compose -f docker-compose.test.yml up -d`, puis exécutez `npm run db:migrate:test` avec `TEST_DATABASE_URL` configuré sur le port `5433`. Les migrations de test ne touchent pas à la base de développement.
