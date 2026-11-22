@@ -6,6 +6,30 @@ Copiez `.env.example` vers `.env`, renseignez `DATABASE_URL`, puis lancez `npm r
 
 Le schéma et les migrations se trouvent dans `src/infrastructure/database/prisma/`. Le numéro de dossier et le téléphone patient sont uniques. Ne versionnez jamais `.env` ou des données de patients réelles.
 
+## Authentification et rôles (MED-3)
+
+L’API utilise un JWT (HS256) transmis dans l’en-tête `Authorization: Bearer <token>`. Les mots de passe sont hachés avec `scrypt` (sel aléatoire par mot de passe) et ne sont jamais stockés ni renvoyés en clair.
+
+Configuration : `JWT_SECRET` (obligatoire, 32 caractères minimum — l’API refuse de démarrer sinon) et `JWT_EXPIRES_IN` (durée de vie du jeton, `1h` par défaut).
+
+| Route | Accès | Réponse |
+| :--- | :--- | :--- |
+| `POST /api/auth/login` | Public | `200 { token, user: { id, email, firstName, lastName, role } }` ; `401` si identifiants incorrects, compte inconnu ou désactivé (même réponse dans les trois cas) ; `400` si le corps est invalide |
+| `GET /api/auth/me` | JWT valide | `200 { user }` ; `401` si le jeton est absent, invalide, expiré ou si le compte est désactivé |
+
+Rôles gérés : `ADMIN`, `MEDICAL`, `ADMIN_STAFF`, `SUPERVISOR` (type `UserRole`, enum Prisma `UserRole`). Pour protéger une route, montez les middlewares dans cet ordre :
+
+```ts
+router.post("/patients", authenticate(tokens), requireRole("ADMIN", "ADMIN_STAFF"), controller.create);
+```
+
+- `authenticate` répond `401 Unauthorized` sans JWT valide ;
+- `requireRole(...)` répond `403 Forbidden` si le rôle de l’utilisateur n’est pas autorisé.
+
+Les erreurs ont toujours la forme `{ "error": { "code", "message", "details"? } }`. Les e-mails sont comparés en minuscules : enregistrez-les en minuscules lors de la création d’un compte. La migration `rename_user_roles` renomme les anciennes valeurs d’enum (`MEDICAL_STAFF`, `ADMINISTRATIVE_STAFF`, `EMERGENCY_SUPERVISOR`) sans perdre les comptes existants.
+
+Tests : `npm run test:unit` et `npx jest tests/e2e/auth.e2e.spec.ts` (les tests E2E d’authentification utilisent un dépôt utilisateur en mémoire : aucune base de données n’est requise).
+
 ## 1. Architecture backend — Node + Express
 
 Le backend suit la **Clean Architecture** : les règles métier sont isolées des frameworks, de la base de données et d’Express. Les dépendances pointent toujours de l’extérieur vers le domaine.

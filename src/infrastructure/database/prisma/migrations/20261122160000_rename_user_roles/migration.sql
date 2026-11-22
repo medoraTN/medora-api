@@ -1,0 +1,5 @@
+-- MED-3: align role names with the API/web contract (ADMIN, MEDICAL, ADMIN_STAFF, SUPERVISOR).
+-- RENAME VALUE keeps existing rows: users keep their role under the new label.
+ALTER TYPE "UserRole" RENAME VALUE 'MEDICAL_STAFF' TO 'MEDICAL';
+ALTER TYPE "UserRole" RENAME VALUE 'ADMINISTRATIVE_STAFF' TO 'ADMIN_STAFF';
+ALTER TYPE "UserRole" RENAME VALUE 'EMERGENCY_SUPERVISOR' TO 'SUPERVISOR';
