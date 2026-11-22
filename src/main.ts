@@ -8,11 +8,14 @@ import { PrismaUserRepository } from "./infrastructure/database/repositories/pri
 import { startServer } from "./presentation/server";
 
 // Composition root: picks the concrete implementations behind each port.
-const app = createApp({
-  users: new PrismaUserRepository(prisma),
-  patients: new PrismaPatientRepository(prisma),
-  passwordHasher: new ScryptPasswordHasher(),
-  tokens: new JwtTokenService({ secret: env.jwtSecret, expiresIn: env.jwtExpiresIn }),
-});
+const app = createApp(
+  {
+    users: new PrismaUserRepository(prisma),
+    patients: new PrismaPatientRepository(prisma),
+    passwordHasher: new ScryptPasswordHasher(),
+    tokens: new JwtTokenService({ secret: env.jwtSecret, expiresIn: env.jwtExpiresIn }),
+  },
+  env.corsOrigins,
+);
 
 startServer(app, env.port);
