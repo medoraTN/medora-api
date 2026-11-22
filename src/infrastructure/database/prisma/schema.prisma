@@ -25,9 +25,9 @@ enum ReservationStatus {
 
 enum UserRole {
   ADMIN
-  MEDICAL_STAFF
-  ADMINISTRATIVE_STAFF
-  EMERGENCY_SUPERVISOR
+  MEDICAL
+  ADMIN_STAFF
+  SUPERVISOR
 }
 
 enum PatientSex {
