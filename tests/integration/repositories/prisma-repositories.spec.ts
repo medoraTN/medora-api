@@ -3,6 +3,7 @@ import { prisma } from "../../../src/infrastructure/database/prisma/client";
 import { PrismaPatientRepository } from "../../../src/infrastructure/database/repositories/prisma-patient.repository";
 import { PrismaReservationRepository } from "../../../src/infrastructure/database/repositories/prisma-reservation.repository";
 import { PrismaUserRepository } from "../../../src/infrastructure/database/repositories/prisma-user.repository";
+import { describe } from "node:test";
 
 const patients = new PrismaPatientRepository(prisma);
 const reservations = new PrismaReservationRepository(prisma);
