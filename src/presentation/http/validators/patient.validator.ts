@@ -22,10 +22,22 @@ export const listPatientsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
   search: z.string().trim().max(100).optional(),
-  status: z.enum(["WAITING", "IN_CARE", "IN_EXAM", "AWAITING_RESULTS", "READY_FOR_DISCHARGE", "DISCHARGED", "TRANSFERRED", "CANCELLED"]).optional(),
+  status: z.enum(["WAITING", "IN_PROGRESS", "IN_EXAMINATION", "WAITING_RESULT", "READY_FOR_DISCHARGE", "DISCHARGED", "TRANSFERRED", "CANCELLED"]).optional(),
 }).strict();
 
 export const patientIdParamsSchema = z.object({ id: z.string().trim().min(1, "L’identifiant du patient est requis.").max(128) });
+export const updatePatientStatusSchema = z.object({
+  status: z.enum([
+    "WAITING",
+    "IN_PROGRESS",
+    "IN_EXAMINATION",
+    "WAITING_RESULT",
+    "READY_FOR_DISCHARGE",
+    "DISCHARGED",
+    "TRANSFERRED",
+    "CANCELLED",
+  ], "Un statut de patient valide est requis."),
+}).strict();
 
 export type CreatePatientBody = z.infer<typeof createPatientSchema>;
 export type ListPatientsQuery = z.infer<typeof listPatientsQuerySchema>;

@@ -1,5 +1,22 @@
-export type PatientStatus = "WAITING" | "IN_CARE" | "IN_EXAM" | "AWAITING_RESULTS" | "READY_FOR_DISCHARGE" | "DISCHARGED" | "TRANSFERRED" | "CANCELLED";
+export type PatientStatus =
+  | "WAITING"
+  | "IN_PROGRESS"
+  | "IN_EXAMINATION"
+  | "WAITING_RESULT"
+  | "READY_FOR_DISCHARGE"
+  | "DISCHARGED"
+  | "TRANSFERRED"
+  | "CANCELLED";
 export type PatientSex = "FEMALE" | "MALE" | "OTHER" | "UNKNOWN";
+
+export interface PatientStatusHistoryEntry {
+  id: string;
+  patientId: string;
+  previousStatus: PatientStatus | null;
+  status: PatientStatus;
+  changedById: string;
+  changedAt: Date;
+}
 
 export interface Patient {
   id: string; recordNumber: string; firstName: string; lastName: string; dateOfBirth: Date;

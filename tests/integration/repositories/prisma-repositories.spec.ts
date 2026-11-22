@@ -130,9 +130,25 @@ describe("Prisma repositories against PostgreSQL test database", () => {
       expect.objectContaining({ id: reservation.id }),
     ]);
 
-    const updated = await patients.updateStatus(patient.id, "IN_CARE", user.id);
-    expect(updated.status).toBe("IN_CARE");
+    const updated = await patients.updateStatus(patient.id, "WAITING", "IN_PROGRESS", user.id);
+    expect(updated.status).toBe("IN_PROGRESS");
     await expect(prisma.patientStatusHistory.findFirst({ where: { patientId: patient.id } }))
-      .resolves.toMatchObject({ status: "IN_CARE", changedById: user.id });
+      .resolves.toMatchObject({
+        previousStatus: "WAITING",
+        status: "IN_PROGRESS",
+        changedById: user.id,
+        changedAt: expect.any(Date),
+      });
+
+    await expect(patients.updateStatus(patient.id, "WAITING", "CANCELLED", user.id))
+      .rejects.toMatchObject({ code: "INVALID_STATUS_TRANSITION" });
+    await expect(prisma.patient.findUnique({ where: { id: patient.id } })).resolves.toMatchObject({ status: "IN_PROGRESS" });
+    await expect(prisma.patientStatusHistory.count({ where: { patientId: patient.id } })).resolves.toBe(1);
+
+    const rollbackPatient = await createPatient();
+    await expect(patients.updateStatus(rollbackPatient.id, "WAITING", "IN_PROGRESS", "missing-user"))
+      .rejects.toMatchObject({ code: "P2003" });
+    await expect(prisma.patient.findUnique({ where: { id: rollbackPatient.id } })).resolves.toMatchObject({ status: "WAITING" });
+    await expect(prisma.patientStatusHistory.count({ where: { patientId: rollbackPatient.id } })).resolves.toBe(0);
   });
 });

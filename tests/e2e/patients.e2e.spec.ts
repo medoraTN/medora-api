@@ -40,6 +40,13 @@ async function createPatient(overrides: Record<string, unknown> = {}) {
     .send(patientInput(overrides));
 }
 
+async function changePatientStatus(id: string, status: unknown, role: UserRole = "MEDICAL") {
+  return request(app)
+    .patch(`/api/patients/${id}/status`)
+    .set("Authorization", authorization(role))
+    .send({ status });
+}
+
 beforeEach(async () => {
   for (const role of USER_ROLES) {
     accounts[role] = await users.create({
@@ -165,5 +172,65 @@ describe("patient endpoints", () => {
       .set("Authorization", authorization("ADMIN"));
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it.each(["ADMIN", "MEDICAL"] as const)("allows %s to change a patient status", async (role) => {
+    const created = await createPatient();
+    const patientId = created.body.patient.id as string;
+
+    const response = await changePatientStatus(patientId, "IN_PROGRESS", role);
+
+    expect(response.status).toBe(200);
+    expect(response.body.patient.status).toBe("IN_PROGRESS");
+    expect(patients.statusHistory(patientId)).toEqual([
+      expect.objectContaining({
+        previousStatus: "WAITING",
+        status: "IN_PROGRESS",
+        changedById: accounts[role].id,
+        changedAt: expect.any(Date),
+      }),
+    ]);
+  });
+
+  it.each(["ADMIN_STAFF", "SUPERVISOR"] as const)("denies %s from changing patient status", async (role) => {
+    const created = await createPatient();
+    const response = await changePatientStatus(created.body.patient.id, "IN_PROGRESS", role);
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("requires authentication to change patient status", async () => {
+    const created = await createPatient();
+    const response = await request(app)
+      .patch(`/api/patients/${created.body.patient.id}/status`)
+      .send({ status: "IN_PROGRESS" });
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHENTICATED");
+  });
+
+  it("returns 400 for a status outside the patient enum", async () => {
+    const created = await createPatient();
+    const response = await changePatientStatus(created.body.patient.id, "NOT_A_STATUS");
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("returns 409 and leaves history unchanged for a forbidden transition", async () => {
+    const created = await createPatient();
+    const patientId = created.body.patient.id as string;
+    await changePatientStatus(patientId, "CANCELLED");
+
+    const response = await changePatientStatus(patientId, "WAITING");
+
+    expect(response.status).toBe(409);
+    expect(response.body.error.code).toBe("INVALID_STATUS_TRANSITION");
+    expect(patients.statusHistory(patientId)).toHaveLength(1);
+    await expect(patients.findById(patientId)).resolves.toMatchObject({ status: "CANCELLED" });
+  });
+
+  it("returns 404 for a status update on an unknown patient", async () => {
+    const response = await changePatientStatus("missing-patient", "IN_PROGRESS");
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("NOT_FOUND");
   });
 });

@@ -8,9 +8,9 @@ datasource db {
 
 enum PatientStatus {
   WAITING
-  IN_CARE
-  IN_EXAM
-  AWAITING_RESULTS
+  IN_PROGRESS
+  IN_EXAMINATION
+  WAITING_RESULT
   READY_FOR_DISCHARGE
   DISCHARGED
   TRANSFERRED
@@ -97,6 +97,7 @@ model PatientStatusHistory {
   id          String        @id @default(cuid())
   patientId   String        @map("patient_id")
   patient     Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  previousStatus PatientStatus? @map("previous_status")
   status      PatientStatus
   changedById String        @map("changed_by_id")
   changedBy   User          @relation(fields: [changedById], references: [id], onDelete: Restrict)

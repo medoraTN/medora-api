@@ -23,5 +23,10 @@ export interface PatientRepository {
   findByRecordNumber(recordNumber: string): Promise<Patient | null>;
   findByPhone(phone: string): Promise<Patient | null>;
   list(query: PatientListQuery): Promise<PatientPage>;
-  updateStatus(id: string, status: PatientStatus, changedById: string): Promise<Patient>;
+  updateStatus(
+    id: string,
+    expectedStatus: PatientStatus,
+    status: PatientStatus,
+    changedById: string,
+  ): Promise<Patient>;
 }
