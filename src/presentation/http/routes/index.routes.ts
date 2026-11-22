@@ -6,6 +6,7 @@ import { LoginUseCase } from "../../../application/use-cases/login.use-case";
 import { CreatePatientUseCase } from "../../../application/use-cases/create-patient.use-case";
 import { GetPatientUseCase } from "../../../application/use-cases/get-patient.use-case";
 import { ListPatientsUseCase } from "../../../application/use-cases/list-patients.use-case";
+import { UpdatePatientStatusUseCase } from "../../../application/use-cases/update-patient-status.use-case";
 import type { PatientRepository } from "../../../domain/repositories/patient.repository";
 import type { UserRepository } from "../../../domain/repositories/user.repository";
 import { AuthController } from "../controllers/auth.controller";
@@ -33,6 +34,7 @@ export function createApiRouter({ users, patients, passwordHasher, tokens }: Api
     new CreatePatientUseCase(patients),
     new ListPatientsUseCase(patients),
     new GetPatientUseCase(patients),
+    new UpdatePatientStatusUseCase(patients),
   );
   router.use("/patients", createPatientRouter(patientController, authenticate(tokens)));
   return router;

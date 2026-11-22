@@ -32,6 +32,12 @@ Les erreurs ont toujours la forme `{ "error": { "code", "message", "details"? } 
 
 Tests : `npm run test:unit` et `npx jest tests/e2e/auth.e2e.spec.ts` (les tests E2E d’authentification utilisent un dépôt utilisateur en mémoire : aucune base de données n’est requise).
 
+## Statut des patients (MED-5)
+
+`PATCH /api/patients/:id/status` requiert un JWT et est réservé aux rôles `ADMIN` et `MEDICAL`. Le corps contient un statut parmi `WAITING`, `IN_PROGRESS`, `IN_EXAMINATION`, `WAITING_RESULT`, `READY_FOR_DISCHARGE`, `DISCHARGED`, `TRANSFERRED` et `CANCELLED`. Une transition non autorisée renvoie `409 INVALID_STATUS_TRANSITION`; un patient absent renvoie `404 NOT_FOUND` et une valeur invalide `400 VALIDATION_ERROR`.
+
+Transitions autorisées : `WAITING` → `IN_PROGRESS`, `TRANSFERRED` ou `CANCELLED`; `IN_PROGRESS`, `IN_EXAMINATION` et `WAITING_RESULT` peuvent progresser entre ces trois statuts, vers `READY_FOR_DISCHARGE`, `TRANSFERRED` ou `CANCELLED`; `READY_FOR_DISCHARGE` → `IN_PROGRESS`, `DISCHARGED` ou `TRANSFERRED`. `DISCHARGED`, `TRANSFERRED` et `CANCELLED` sont terminaux. Chaque mise à jour et son historique (ancien/nouveau statut, utilisateur et horodatage) sont écrits dans une transaction Prisma. La migration MED-5 renomme les valeurs de statut existantes et ajoute l’ancien statut nullable; les événements historiques antérieurs ne permettent pas de reconstituer cet ancien statut.
+
 ## 1. Architecture backend — Node + Express
 
 Le backend suit la **Clean Architecture** : les règles métier sont isolées des frameworks, de la base de données et d’Express. Les dépendances pointent toujours de l’extérieur vers le domaine.

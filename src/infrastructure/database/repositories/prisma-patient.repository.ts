@@ -1,5 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { ConflictError } from "../../../domain/errors/conflict-error";
+import { InvalidPatientStatusTransitionError } from "../../../domain/errors/invalid-patient-status-transition-error";
+import { NotFoundError } from "../../../domain/errors/not-found-error";
 import type { Patient, PatientStatus } from "../../../domain/entities/patient.entity";
 import type {
   CreatePatientRecord,
@@ -50,10 +52,19 @@ export class PrismaPatientRepository implements PatientRepository {
     ]);
     return { items, page: query.page, pageSize: query.pageSize, total, totalPages: Math.ceil(total / query.pageSize) };
   }
-  updateStatus(id: string, status: PatientStatus, changedById: string): Promise<Patient> {
+  updateStatus(id: string, expectedStatus: PatientStatus, status: PatientStatus, changedById: string): Promise<Patient> {
     return this.prisma.$transaction(async (tx) => {
-      const patient = await tx.patient.update({ where: { id }, data: { status } });
-      await tx.patientStatusHistory.create({ data: { patientId: id, status, changedById } });
+      const update = await tx.patient.updateMany({ where: { id, status: expectedStatus }, data: { status } });
+      if (update.count !== 1) {
+        const current = await tx.patient.findUnique({ where: { id }, select: { status: true } });
+        if (!current) throw new NotFoundError("Patient");
+        throw new InvalidPatientStatusTransitionError(current.status, status);
+      }
+      await tx.patientStatusHistory.create({
+        data: { patientId: id, previousStatus: expectedStatus, status, changedById },
+      });
+      const patient = await tx.patient.findUnique({ where: { id } });
+      if (!patient) throw new NotFoundError("Patient");
       return patient;
     });
   }

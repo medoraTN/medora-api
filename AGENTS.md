@@ -10,6 +10,8 @@ The API uses TypeScript, Express, Prisma, and Clean Architecture. Keep domain en
 
 Patient routes require a bearer token. `ADMIN` and `ADMIN_STAFF` can create patients; `ADMIN`, `MEDICAL`, `ADMIN_STAFF`, and `SUPERVISOR` can read/search them. Preserve the standard error envelope `{ error: { code, message, details? } }`: validation `400 VALIDATION_ERROR`, authentication `401 UNAUTHENTICATED`, role denial `403 FORBIDDEN`, missing resource `404 NOT_FOUND`, uniqueness conflict `409 CONFLICT`, and unexpected errors `500 INTERNAL_ERROR`.
 
+`PATCH /api/patients/:id/status` is limited to `ADMIN` and `MEDICAL`. Keep the MED-5 transition policy in `src/domain/value-objects/patient-status.vo.ts`: WAITING progresses to IN_PROGRESS, TRANSFERRED, or CANCELLED; active care statuses may advance among IN_PROGRESS, IN_EXAMINATION, and WAITING_RESULT, then to READY_FOR_DISCHARGE, TRANSFERRED, or CANCELLED; READY_FOR_DISCHARGE may return to IN_PROGRESS or end as DISCHARGED/TRANSFERRED; DISCHARGED, TRANSFERRED, and CANCELLED are terminal. Invalid transitions return `409 INVALID_STATUS_TRANSITION`. Persist the previous status, next status, actor, and timestamp atomically with the patient update in the Prisma repository.
+
 ## Development and Validation
 
 - `npm run dev` starts the API in watch mode; `npm run build` compiles `src/`; `npm start` runs `dist/main.js`.

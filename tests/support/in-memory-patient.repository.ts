@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
-import type { Patient, PatientStatus } from "../../src/domain/entities/patient.entity";
+import type { Patient, PatientStatus, PatientStatusHistoryEntry } from "../../src/domain/entities/patient.entity";
 import { ConflictError } from "../../src/domain/errors/conflict-error";
+import { InvalidPatientStatusTransitionError } from "../../src/domain/errors/invalid-patient-status-transition-error";
+import { NotFoundError } from "../../src/domain/errors/not-found-error";
 import type {
   CreatePatientRecord,
   PatientListQuery,
@@ -10,6 +12,7 @@ import type {
 
 export class InMemoryPatientRepository implements PatientRepository {
   private readonly records = new Map<string, Patient>();
+  private readonly history: PatientStatusHistoryEntry[] = [];
 
   async create(record: CreatePatientRecord): Promise<Patient> {
     if ([...this.records.values()].some((patient) => patient.recordNumber === record.recordNumber)) {
@@ -53,11 +56,32 @@ export class InMemoryPatientRepository implements PatientRepository {
     };
   }
 
-  async updateStatus(id: string, status: PatientStatus, _changedById: string): Promise<Patient> {
+  async updateStatus(
+    id: string,
+    expectedStatus: PatientStatus,
+    status: PatientStatus,
+    changedById: string,
+  ): Promise<Patient> {
     const patient = this.records.get(id);
-    if (!patient) throw new Error("Patient not found in in-memory test repository");
+    if (!patient) throw new NotFoundError("Patient");
+    if (patient.status !== expectedStatus) {
+      throw new InvalidPatientStatusTransitionError(patient.status, status);
+    }
+    const changedAt = new Date();
     const updated = { ...patient, status, updatedAt: new Date() };
     this.records.set(id, updated);
+    this.history.push({
+      id: randomUUID(),
+      patientId: id,
+      previousStatus: expectedStatus,
+      status,
+      changedById,
+      changedAt,
+    });
     return updated;
+  }
+
+  statusHistory(patientId: string): PatientStatusHistoryEntry[] {
+    return this.history.filter((entry) => entry.patientId === patientId);
   }
 }

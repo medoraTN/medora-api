@@ -3,6 +3,7 @@ import type { PatientRepository } from "../../../src/domain/repositories/patient
 import { CreatePatientUseCase } from "../../../src/application/use-cases/create-patient.use-case";
 import { GetPatientUseCase } from "../../../src/application/use-cases/get-patient.use-case";
 import { ListPatientsUseCase } from "../../../src/application/use-cases/list-patients.use-case";
+import { UpdatePatientStatusUseCase } from "../../../src/application/use-cases/update-patient-status.use-case";
 
 const patient: Patient = {
   id: "patient-1",
@@ -69,5 +70,30 @@ describe("patient use cases", () => {
       code: "NOT_FOUND",
       message: "Patient introuvable.",
     });
+  });
+
+  it("checks the current status and passes the actor into the repository update", async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(patient),
+      updateStatus: jest.fn().mockResolvedValue({ ...patient, status: "IN_PROGRESS" }),
+    } as unknown as PatientRepository;
+    const useCase = new UpdatePatientStatusUseCase(repository);
+
+    await expect(useCase.execute(patient.id, "IN_PROGRESS", "medical-user-1"))
+      .resolves.toMatchObject({ status: "IN_PROGRESS" });
+    expect(repository.updateStatus).toHaveBeenCalledWith(patient.id, "WAITING", "IN_PROGRESS", "medical-user-1");
+  });
+
+  it("rejects transitions from terminal states before writing", async () => {
+    const discharged = { ...patient, status: "DISCHARGED" as const };
+    const repository = {
+      findById: jest.fn().mockResolvedValue(discharged),
+      updateStatus: jest.fn(),
+    } as unknown as PatientRepository;
+    const useCase = new UpdatePatientStatusUseCase(repository);
+
+    await expect(useCase.execute(patient.id, "WAITING", "medical-user-1"))
+      .rejects.toMatchObject({ code: "INVALID_STATUS_TRANSITION" });
+    expect(repository.updateStatus).not.toHaveBeenCalled();
   });
 });
