@@ -44,6 +44,14 @@ Transitions autorisées : `WAITING` → `IN_PROGRESS`, `TRANSFERRED` ou `CANCELL
 
 Le backend suit la **Clean Architecture** : les règles métier sont isolées des frameworks, de la base de données et d’Express. Les dépendances pointent toujours de l’extérieur vers le domaine.
 
+## Réservations (MED-9)
+
+Les réservations représentent une prestation unique (`service`), avec `practitioner` et `examination` facultatifs. Les routes sous `/api/reservations` exigent un JWT. `ADMIN`, `ADMIN_STAFF` et `MEDICAL` peuvent créer, modifier et annuler; les quatre rôles (`ADMIN`, `MEDICAL`, `ADMIN_STAFF`, `SUPERVISOR`) peuvent consulter. `POST` retourne `201 { reservation }`, `GET` retourne `200 { items }`, et `PATCH`/`DELETE` retournent `200 { reservation }`. L’annulation est logique et conserve la ligne avec le statut `CANCELLED`.
+
+La création requiert `patientId`, `service`, `scheduledAt` (date ISO 8601 avec fuseau) et `durationMinutes` (entier positif); `practitioner` et `examination` sont facultatifs/nullables. Le statut initial est `PENDING`. `GET /api/reservations` accepte les filtres facultatifs `date=YYYY-MM-DD`, `status` et `patientId`; `date` couvre la journée UTC. Une création ou modification planifiée dans le passé renvoie `400 VALIDATION_ERROR`; un patient ou une réservation absent renvoie `404 NOT_FOUND`.
+
+Statuts : `PENDING`, `CONFIRMED`, `CANCELLED`, `COMPLETED`. Transitions autorisées : `PENDING` → `CONFIRMED` ou `CANCELLED`; `CONFIRMED` → `CANCELLED` ou `COMPLETED`. `CANCELLED` et `COMPLETED` sont terminaux. Une transition interdite, ou la modification d’une réservation terminale, renvoie `409 INVALID_RESERVATION_TRANSITION`.
+
 ```text
 medora-api/
 ├── src/

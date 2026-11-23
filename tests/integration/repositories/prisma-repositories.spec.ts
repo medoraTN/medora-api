@@ -113,6 +113,15 @@ describe("Prisma repositories against PostgreSQL test database", () => {
   it("persists users and reservations and records status changes transactionally", async () => {
     const user = await createUser();
     const patient = await createPatient();
+    await expect(reservations.create({
+      patientId: "missing-patient",
+      service: "Emergency imaging",
+      practitioner: null,
+      examination: null,
+      scheduledAt: new Date(Date.now() + 60_000),
+      durationMinutes: 30,
+      status: "PENDING",
+    })).rejects.toMatchObject({ code: "NOT_FOUND" });
     const reservation = await reservations.create({
       patientId: patient.id,
       service: "Emergency imaging",
@@ -129,6 +138,18 @@ describe("Prisma repositories against PostgreSQL test database", () => {
     await expect(reservations.listByPatient(patient.id)).resolves.toEqual([
       expect.objectContaining({ id: reservation.id }),
     ]);
+    await expect(reservations.list({
+      date: reservation.scheduledAt.toISOString().slice(0, 10),
+      status: "PENDING",
+      patientId: patient.id,
+    })).resolves.toEqual([expect.objectContaining({ id: reservation.id })]);
+
+    await expect(reservations.update(reservation.id, { service: "Updated imaging", status: "CONFIRMED" }))
+      .resolves.toMatchObject({ service: "Updated imaging", status: "CONFIRMED" });
+    await expect(reservations.updateStatus(reservation.id, "COMPLETED"))
+      .resolves.toMatchObject({ status: "COMPLETED" });
+    await expect(reservations.update("missing-reservation", { service: "No record" }))
+      .rejects.toMatchObject({ code: "NOT_FOUND" });
 
     const updated = await patients.updateStatus(patient.id, "WAITING", "IN_PROGRESS", user.id);
     expect(updated.status).toBe("IN_PROGRESS");

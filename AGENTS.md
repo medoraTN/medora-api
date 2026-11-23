@@ -14,6 +14,8 @@ Patient routes require a bearer token. `ADMIN` and `ADMIN_STAFF` can create pati
 
 Configure browser origins with `CORS_ORIGINS` (comma-separated; local Angular default `http://localhost:4200`). Keep CORS middleware before JSON parsing and routes so preflight `OPTIONS` requests are answered before authentication. CORS is not authorization; protected routes still require JWT and role checks.
 
+Reservation routes are mounted only when `ApiDependencies.reservations` is supplied, preserving app compositions without that port. `ADMIN`, `ADMIN_STAFF`, and `MEDICAL` may create/update/cancel; all four roles may read. Keep the single-service reservation model and status transition policy in `src/domain/value-objects/reservation-status.vo.ts`. Use UTC day ranges for the `date` filter, return `400 VALIDATION_ERROR` for invalid/past schedule inputs, `404 NOT_FOUND` for missing patients/reservations, and `409 INVALID_RESERVATION_TRANSITION` for terminal or disallowed status changes. `DELETE` is a soft cancellation.
+
 ## Development and Validation
 
 - `npm run dev` starts the API in watch mode; `npm run build` compiles `src/`; `npm start` runs `dist/main.js`.
