@@ -1,6 +1,6 @@
 import type { RequestHandler } from "express";
 
-const ALLOWED_METHODS = "GET,POST,PATCH,OPTIONS";
+const ALLOWED_METHODS = "GET,POST,PATCH,OPTIONS,DELETE";
 const ALLOWED_HEADERS = "Authorization,Content-Type";
 
 /** CORS is a browser policy; API authentication is still enforced by route middleware. */
