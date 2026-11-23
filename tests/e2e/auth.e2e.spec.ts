@@ -29,16 +29,16 @@ let inactiveUser: User;
  */
 function createProbeApp(): Express {
   const probe = express();
-  probe.get("/admin-only", authenticate(tokens), requireRole("ADMIN"), (_req, res) => {
+  probe.get("/admin-only", authenticate(tokens, users), requireRole("ADMIN"), (_req, res) => {
     res.json({ ok: true });
   });
-  probe.get("/clinical", authenticate(tokens), requireRole("ADMIN", "MEDICAL"), (_req, res) => {
+  probe.get("/clinical", authenticate(tokens, users), requireRole("ADMIN", "MEDICAL"), (_req, res) => {
     res.json({ ok: true });
   });
-  probe.get("/front-desk", authenticate(tokens), requireRole("ADMIN", "ADMIN_STAFF"), (_req, res) => {
+  probe.get("/front-desk", authenticate(tokens, users), requireRole("ADMIN", "ADMIN_STAFF"), (_req, res) => {
     res.json({ ok: true });
   });
-  probe.get("/any-authenticated", authenticate(tokens), (_req, res) => {
+  probe.get("/any-authenticated", authenticate(tokens, users), (_req, res) => {
     res.json({ ok: true });
   });
   probe.use(errorHandler);

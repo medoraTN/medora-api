@@ -34,6 +34,12 @@ Les erreurs ont toujours la forme `{ "error": { "code", "message", "details"? } 
 
 Tests : `npm run test:unit` et `npx jest tests/e2e/auth.e2e.spec.ts` (les tests E2E d’authentification utilisent un dépôt utilisateur en mémoire : aucune base de données n’est requise).
 
+## Administration des utilisateurs (MED-10)
+
+Les routes `/api/users` exigent un JWT et le rôle `ADMIN`. `GET /api/users` accepte `page`, `pageSize`, `search`, `role` et `isActive`; la réponse paginée contient uniquement `id`, `email`, `firstName`, `lastName`, `role`, `isActive`, `createdAt` et `updatedAt` (jamais `passwordHash`). Création : `POST /api/users` avec `email`, `firstName`, `lastName`, `role` et `password`; la réponse est `201 { user }` et le compte est actif par défaut. Modifications : `PATCH /api/users/:id/role` (`{ "role": "MEDICAL" }`), `PATCH /api/users/:id/status` (`{ "isActive": false }`), et `POST /api/users/:id/password-reset` (`{ "newPassword": "..." }`). Ces trois opérations répondent `200 { user }`.
+
+Le mot de passe initial ou réinitialisé est haché par scrypt. La récupération est administrative pour le MVP; aucun flux e-mail n’est configuré. Les changements de rôle et de statut prennent effet sur les tokens existants, car chaque requête authentifiée relit le rôle et l’état actif courants. Un administrateur ne peut ni se rétrograder ni se désactiver, et il doit rester au moins un administrateur actif. Les créations, changements de rôle, activations/désactivations et réinitialisations sont journalisés transactionnellement dans `user_audit_logs`; les mots de passe et leurs hashes n’entrent jamais dans les métadonnées d’audit.
+
 ## Statut des patients (MED-5)
 
 `PATCH /api/patients/:id/status` requiert un JWT et est réservé aux rôles `ADMIN` et `MEDICAL`. Le corps contient un statut parmi `WAITING`, `IN_PROGRESS`, `IN_EXAMINATION`, `WAITING_RESULT`, `READY_FOR_DISCHARGE`, `DISCHARGED`, `TRANSFERRED` et `CANCELLED`. Une transition non autorisée renvoie `409 INVALID_STATUS_TRANSITION`; un patient absent renvoie `404 NOT_FOUND` et une valeur invalide `400 VALIDATION_ERROR`.

@@ -31,6 +31,14 @@ enum UserRole {
   SUPERVISOR
 }
 
+enum UserAuditAction {
+  USER_CREATED
+  USER_ROLE_CHANGED
+  USER_DEACTIVATED
+  USER_REACTIVATED
+  USER_PASSWORD_RESET
+}
+
 enum PatientSex {
   FEMALE
   MALE
@@ -90,8 +98,25 @@ model User {
   createdAt     DateTime               @default(now()) @map("created_at")
   updatedAt     DateTime               @updatedAt @map("updated_at")
   statusChanges PatientStatusHistory[]
+  adminActions  UserAuditLog[]         @relation("UserAuditActor")
+  auditEvents   UserAuditLog[]         @relation("UserAuditTarget")
 
   @@map("users")
+}
+
+model UserAuditLog {
+  id           String          @id @default(cuid())
+  actorUserId  String          @map("actor_user_id")
+  actor        User            @relation("UserAuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  targetUserId String          @map("target_user_id")
+  target       User            @relation("UserAuditTarget", fields: [targetUserId], references: [id], onDelete: Restrict)
+  action       UserAuditAction
+  metadata     Json?
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  @@index([actorUserId, createdAt])
+  @@index([targetUserId, createdAt])
+  @@map("user_audit_logs")
 }
 
 model PatientStatusHistory {

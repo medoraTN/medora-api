@@ -14,6 +14,8 @@ Patient routes require a bearer token. `ADMIN` and `ADMIN_STAFF` can create pati
 
 Configure browser origins with `CORS_ORIGINS` (comma-separated; local Angular default `http://localhost:4200`). Keep CORS middleware before JSON parsing and routes so preflight `OPTIONS` requests are answered before authentication. CORS is not authorization; protected routes still require JWT and role checks.
 
+`/api/users` management is ADMIN-only. Keep management mutations and their `UserAuditLog` entries in one Prisma transaction, store only safe metadata, and return `UserSummary` projections without password hashes. Authentication must use the current database `isActive` and `role` values so deactivation/role changes apply to existing JWTs. Protect against self-demotion/deactivation and removal of the last active administrator.
+
 Reservation routes are mounted only when `ApiDependencies.reservations` is supplied, preserving app compositions without that port. `ADMIN`, `ADMIN_STAFF`, and `MEDICAL` may create/update/cancel; all four roles may read. Keep the single-service reservation model and status transition policy in `src/domain/value-objects/reservation-status.vo.ts`. Use UTC day ranges for the `date` filter, return `400 VALIDATION_ERROR` for invalid/past schedule inputs, `404 NOT_FOUND` for missing patients/reservations, and `409 INVALID_RESERVATION_TRANSITION` for terminal or disallowed status changes. `DELETE` is a soft cancellation.
 
 ## Development and Validation
