@@ -9,9 +9,11 @@ import { PrismaReservationRepository } from "./infrastructure/database/repositor
 import { startServer } from "./presentation/server";
 
 // Composition root: picks the concrete implementations behind each port.
+const users = new PrismaUserRepository(prisma);
 const app = createApp(
   {
-    users: new PrismaUserRepository(prisma),
+    users,
+    userManagement: users,
     patients: new PrismaPatientRepository(prisma),
     reservations: new PrismaReservationRepository(prisma),
     passwordHasher: new ScryptPasswordHasher(),

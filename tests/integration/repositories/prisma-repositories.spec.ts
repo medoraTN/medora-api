@@ -66,6 +66,9 @@ describe("Prisma repositories against PostgreSQL test database", () => {
   afterAll(async () => {
     await prisma.reservation.deleteMany({ where: { id: { in: reservationIds } } });
     await prisma.patient.deleteMany({ where: { id: { in: patientIds } } });
+    await prisma.userAuditLog.deleteMany({
+      where: { OR: [{ actorUserId: { in: userIds } }, { targetUserId: { in: userIds } }] },
+    });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
     await prisma.$disconnect();
   });
@@ -171,5 +174,37 @@ describe("Prisma repositories against PostgreSQL test database", () => {
       .rejects.toMatchObject({ code: "P2003" });
     await expect(prisma.patient.findUnique({ where: { id: rollbackPatient.id } })).resolves.toMatchObject({ status: "WAITING" });
     await expect(prisma.patientStatusHistory.count({ where: { patientId: rollbackPatient.id } })).resolves.toBe(0);
+  });
+
+  it("persists safe user management changes with audit rows transactionally", async () => {
+    const actor = await createUser();
+    const target = await users.createManagedUser({
+      email: `managed-${randomUUID()}@example.test`,
+      passwordHash: "hashed-test-password",
+      firstName: "Managed",
+      lastName: "User",
+      role: "MEDICAL",
+      isActive: true,
+    }, actor.id);
+    userIds.push(target.id);
+    expect("passwordHash" in target).toBe(false);
+
+    await expect(users.listUsers({ page: 1, pageSize: 10, search: target.email }))
+      .resolves.toMatchObject({ items: [expect.objectContaining({ id: target.id })], total: 1 });
+    await users.updateRole(target.id, "ADMIN", actor.id);
+    await users.setActive(target.id, false, actor.id);
+    await users.setActive(target.id, true, actor.id);
+    await users.resetPassword(target.id, "new-hash", actor.id);
+
+    const events = await prisma.userAuditLog.findMany({ where: { targetUserId: target.id }, orderBy: { createdAt: "asc" } });
+    expect(events.map((event) => event.action)).toEqual([
+      "USER_CREATED",
+      "USER_ROLE_CHANGED",
+      "USER_DEACTIVATED",
+      "USER_REACTIVATED",
+      "USER_PASSWORD_RESET",
+    ]);
+    expect(events.every((event) => event.actorUserId === actor.id)).toBe(true);
+    expect(JSON.stringify(events)).not.toContain("new-hash");
   });
 });
