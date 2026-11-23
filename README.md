@@ -14,6 +14,8 @@ L’API utilise un JWT (HS256) transmis dans l’en-tête `Authorization: Bearer
 
 Configuration : `JWT_SECRET` (obligatoire, 32 caractères minimum — l’API refuse de démarrer sinon) et `JWT_EXPIRES_IN` (durée de vie du jeton, `1h` par défaut).
 
+En développement, le CORS autorise `http://localhost:4200` pour le frontend Angular. Configurez `CORS_ORIGINS` avec une liste d’origines séparées par des virgules pour les autres environnements. Les requêtes preflight `OPTIONS` autorisent `GET`, `POST`, `PATCH`, les en-têtes `Authorization` et `Content-Type`, sans cookies inter-origines. CORS ne remplace pas l’authentification JWT.
+
 | Route | Accès | Réponse |
 | :--- | :--- | :--- |
 | `POST /api/auth/login` | Public | `200 { token, user: { id, email, firstName, lastName, role } }` ; `401` si identifiants incorrects, compte inconnu ou désactivé (même réponse dans les trois cas) ; `400` si le corps est invalide |

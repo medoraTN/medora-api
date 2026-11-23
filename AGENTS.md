@@ -12,6 +12,8 @@ Patient routes require a bearer token. `ADMIN` and `ADMIN_STAFF` can create pati
 
 `PATCH /api/patients/:id/status` is limited to `ADMIN` and `MEDICAL`. Keep the MED-5 transition policy in `src/domain/value-objects/patient-status.vo.ts`: WAITING progresses to IN_PROGRESS, TRANSFERRED, or CANCELLED; active care statuses may advance among IN_PROGRESS, IN_EXAMINATION, and WAITING_RESULT, then to READY_FOR_DISCHARGE, TRANSFERRED, or CANCELLED; READY_FOR_DISCHARGE may return to IN_PROGRESS or end as DISCHARGED/TRANSFERRED; DISCHARGED, TRANSFERRED, and CANCELLED are terminal. Invalid transitions return `409 INVALID_STATUS_TRANSITION`. Persist the previous status, next status, actor, and timestamp atomically with the patient update in the Prisma repository.
 
+Configure browser origins with `CORS_ORIGINS` (comma-separated; local Angular default `http://localhost:4200`). Keep CORS middleware before JSON parsing and routes so preflight `OPTIONS` requests are answered before authentication. CORS is not authorization; protected routes still require JWT and role checks.
+
 ## Development and Validation
 
 - `npm run dev` starts the API in watch mode; `npm run build` compiles `src/`; `npm start` runs `dist/main.js`.
