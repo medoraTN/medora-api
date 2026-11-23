@@ -5,7 +5,7 @@ import {
   InvalidCredentialsError,
   UnauthenticatedError,
 } from "../../../domain/errors/auth-errors";
-import { DomainError } from "../../../domain/errors/domain-error";
+import { DomainError, ValidationError } from "../../../domain/errors/domain-error";
 import { ConflictError } from "../../../domain/errors/conflict-error";
 import { NotFoundError } from "../../../domain/errors/not-found-error";
 
@@ -53,6 +53,10 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
       field: issue.path.join("."),
       message: issue.message,
     })));
+    return;
+  }
+  if (error instanceof ValidationError) {
+    send(res, 400, error.code, error.message, error.details);
     return;
   }
   if (error instanceof NotFoundError) {

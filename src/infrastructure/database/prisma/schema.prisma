@@ -21,6 +21,7 @@ enum ReservationStatus {
   CONFIRMED
   PENDING
   CANCELLED
+  COMPLETED
 }
 
 enum UserRole {
