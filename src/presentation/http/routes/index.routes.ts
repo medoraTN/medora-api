@@ -11,22 +11,37 @@ import { CreateReservationUseCase } from "../../../application/use-cases/create-
 import { CancelReservationUseCase } from "../../../application/use-cases/cancel-reservation.use-case";
 import { ListReservationsUseCase } from "../../../application/use-cases/list-reservations.use-case";
 import { UpdateReservationUseCase } from "../../../application/use-cases/update-reservation.use-case";
+import { AssignBedUseCase } from "../../../application/use-cases/assign-bed.use-case";
+import { CreateBedUseCase } from "../../../application/use-cases/create-bed.use-case";
+import { CreateUnitUseCase } from "../../../application/use-cases/create-unit.use-case";
 import { CreateUserUseCase } from "../../../application/use-cases/create-user.use-case";
+import { ListBedHistoryUseCase } from "../../../application/use-cases/list-bed-history.use-case";
+import { ListBedsUseCase } from "../../../application/use-cases/list-beds.use-case";
+import { ListUnitsUseCase } from "../../../application/use-cases/list-units.use-case";
 import { ListUsersUseCase } from "../../../application/use-cases/list-users.use-case";
+import { ReleaseBedUseCase } from "../../../application/use-cases/release-bed.use-case";
 import { ResetUserPasswordUseCase } from "../../../application/use-cases/reset-user-password.use-case";
 import { SetUserActiveUseCase } from "../../../application/use-cases/set-user-active.use-case";
+import { TransferBedUseCase } from "../../../application/use-cases/transfer-bed.use-case";
+import { UpdateBedStatusUseCase } from "../../../application/use-cases/update-bed-status.use-case";
 import { UpdateUserRoleUseCase } from "../../../application/use-cases/update-user-role.use-case";
+import type { BedRepository } from "../../../domain/repositories/bed.repository";
 import type { PatientRepository } from "../../../domain/repositories/patient.repository";
 import type { ReservationRepository } from "../../../domain/repositories/reservation.repository";
+import type { UnitRepository } from "../../../domain/repositories/unit.repository";
 import type { UserManagementRepository, UserRepository } from "../../../domain/repositories/user.repository";
 import { AuthController } from "../controllers/auth.controller";
+import { BedController } from "../controllers/bed.controller";
 import { PatientController } from "../controllers/patient.controller";
 import { ReservationController } from "../controllers/reservation.controller";
+import { UnitController } from "../controllers/unit.controller";
 import { UserController } from "../controllers/user.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 import { createAuthRouter } from "./auth.routes";
+import { createBedRouter } from "./bed.routes";
 import { createPatientRouter } from "./patient.routes";
 import { createReservationRouter } from "./reservation.routes";
+import { createUnitRouter } from "./unit.routes";
 import { createUserRouter } from "./user.routes";
 
 export interface ApiDependencies {
@@ -34,11 +49,22 @@ export interface ApiDependencies {
   userManagement?: UserManagementRepository;
   patients: PatientRepository;
   reservations?: ReservationRepository;
+  units?: UnitRepository;
+  beds?: BedRepository;
   passwordHasher: PasswordHasher;
   tokens: TokenService;
 }
 
-export function createApiRouter({ users, userManagement, patients, reservations, passwordHasher, tokens }: ApiDependencies): Router {
+export function createApiRouter({
+  users,
+  userManagement,
+  patients,
+  reservations,
+  units,
+  beds,
+  passwordHasher,
+  tokens,
+}: ApiDependencies): Router {
   const router = Router();
   const requireAuthentication = authenticate(tokens, users);
   const authController = new AuthController(
@@ -72,6 +98,20 @@ export function createApiRouter({ users, userManagement, patients, reservations,
       new CancelReservationUseCase(reservations),
     );
     router.use("/reservations", createReservationRouter(reservationController, requireAuthentication));
+  }
+  if (units && beds) {
+    const unitController = new UnitController(new CreateUnitUseCase(units), new ListUnitsUseCase(units));
+    const bedController = new BedController(
+      new CreateBedUseCase(beds, units),
+      new ListBedsUseCase(beds),
+      new AssignBedUseCase(beds, patients),
+      new TransferBedUseCase(beds),
+      new ReleaseBedUseCase(beds),
+      new UpdateBedStatusUseCase(beds),
+      new ListBedHistoryUseCase(beds),
+    );
+    router.use("/units", createUnitRouter(unitController, requireAuthentication));
+    router.use("/beds", createBedRouter(bedController, requireAuthentication));
   }
   return router;
 }

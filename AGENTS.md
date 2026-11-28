@@ -18,6 +18,8 @@ Configure browser origins with `CORS_ORIGINS` (comma-separated; local Angular de
 
 Reservation routes are mounted only when `ApiDependencies.reservations` is supplied, preserving app compositions without that port. `ADMIN`, `ADMIN_STAFF`, and `MEDICAL` may create/update/cancel; all four roles may read. Keep the single-service reservation model and status transition policy in `src/domain/value-objects/reservation-status.vo.ts`. Use UTC day ranges for the `date` filter, return `400 VALIDATION_ERROR` for invalid/past schedule inputs, `404 NOT_FOUND` for missing patients/reservations, and `409 INVALID_RESERVATION_TRANSITION` for terminal or disallowed status changes. `DELETE` is a soft cancellation.
 
+Unit and bed routes mount only when both `ApiDependencies.units` and `ApiDependencies.beds` are supplied. Units are Urgence (`EMERGENCY`), Bloc (`OR`), and ICU. Beds carry `code`, `type` (`STANDARD`/`MONITORING`/`ISOLATION`), and `status` (`FREE`/`OCCUPIED`/`CLEANING`/`MAINTENANCE`/`RESERVED`). `ADMIN`/`ADMIN_STAFF` create units and beds; `ADMIN`/`ADMIN_STAFF`/`MEDICAL` assign, transfer, release, and update status; all four roles read beds/units and history. Occupied beds return `409 BED_NOT_AVAILABLE` on reassignment; patients already in a bed return `409 PATIENT_ALREADY_ASSIGNED`. Manual status rules live in `src/domain/value-objects/bed-status.vo.ts` (`409 INVALID_BED_STATUS_TRANSITION`). Assignment history (`ASSIGNED`/`TRANSFERRED`/`RELEASED`) is written in the same Prisma transaction as the bed mutation.
+
 ## Development and Validation
 
 - `npm run dev` starts the API in watch mode; `npm run build` compiles `src/`; `npm start` runs `dist/main.js`.

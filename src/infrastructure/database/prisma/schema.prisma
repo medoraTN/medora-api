@@ -46,6 +46,32 @@ enum PatientSex {
   UNKNOWN
 }
 
+enum UnitKind {
+  EMERGENCY
+  OR
+  ICU
+}
+
+enum BedType {
+  STANDARD
+  MONITORING
+  ISOLATION
+}
+
+enum BedStatus {
+  FREE
+  OCCUPIED
+  CLEANING
+  MAINTENANCE
+  RESERVED
+}
+
+enum BedAssignmentEvent {
+  ASSIGNED
+  TRANSFERRED
+  RELEASED
+}
+
 model Patient {
   id            String                 @id @default(cuid())
   recordNumber  String                 @unique @map("record_number")
@@ -63,10 +89,65 @@ model Patient {
   updatedAt     DateTime               @updatedAt @map("updated_at")
   reservations  Reservation[]
   statusHistory PatientStatusHistory[]
+  currentBed    Bed?
+  bedHistory    BedAssignmentHistory[]
 
   @@index([lastName, firstName])
   @@index([status])
   @@map("patients")
+}
+
+model Unit {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  kind      UnitKind
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  beds      Bed[]
+
+  @@index([kind])
+  @@map("units")
+}
+
+model Bed {
+  id               String                 @id @default(cuid())
+  unitId           String                 @map("unit_id")
+  unit             Unit                   @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  code             String
+  type             BedType                @default(STANDARD)
+  status           BedStatus              @default(FREE)
+  currentPatientId String?                @unique @map("current_patient_id")
+  currentPatient   Patient?               @relation(fields: [currentPatientId], references: [id], onDelete: SetNull)
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+  history          BedAssignmentHistory[] @relation("BedHistoryBed")
+  transfersFrom    BedAssignmentHistory[] @relation("BedHistoryFrom")
+  transfersTo      BedAssignmentHistory[] @relation("BedHistoryTo")
+
+  @@unique([unitId, code])
+  @@index([status])
+  @@index([unitId, status])
+  @@map("beds")
+}
+
+model BedAssignmentHistory {
+  id          String             @id @default(cuid())
+  bedId       String             @map("bed_id")
+  bed         Bed                @relation("BedHistoryBed", fields: [bedId], references: [id], onDelete: Cascade)
+  patientId   String             @map("patient_id")
+  patient     Patient            @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  event       BedAssignmentEvent
+  fromBedId   String?            @map("from_bed_id")
+  fromBed     Bed?               @relation("BedHistoryFrom", fields: [fromBedId], references: [id], onDelete: SetNull)
+  toBedId     String?            @map("to_bed_id")
+  toBed       Bed?               @relation("BedHistoryTo", fields: [toBedId], references: [id], onDelete: SetNull)
+  actorUserId String             @map("actor_user_id")
+  actor       User               @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  createdAt   DateTime           @default(now()) @map("created_at")
+
+  @@index([bedId, createdAt])
+  @@index([patientId, createdAt])
+  @@map("bed_assignment_history")
 }
 
 model Reservation {
@@ -100,6 +181,7 @@ model User {
   statusChanges PatientStatusHistory[]
   adminActions  UserAuditLog[]         @relation("UserAuditActor")
   auditEvents   UserAuditLog[]         @relation("UserAuditTarget")
+  bedActions    BedAssignmentHistory[]
 
   @@map("users")
 }

@@ -3,9 +3,11 @@ import { JwtTokenService } from "./infrastructure/auth/jwt.service";
 import { ScryptPasswordHasher } from "./infrastructure/auth/password.service";
 import { env } from "./infrastructure/config/env";
 import { prisma } from "./infrastructure/database/prisma/client";
+import { PrismaBedRepository } from "./infrastructure/database/repositories/prisma-bed.repository";
 import { PrismaPatientRepository } from "./infrastructure/database/repositories/prisma-patient.repository";
-import { PrismaUserRepository } from "./infrastructure/database/repositories/prisma-user.repository";
 import { PrismaReservationRepository } from "./infrastructure/database/repositories/prisma-reservation.repository";
+import { PrismaUnitRepository } from "./infrastructure/database/repositories/prisma-unit.repository";
+import { PrismaUserRepository } from "./infrastructure/database/repositories/prisma-user.repository";
 import { startServer } from "./presentation/server";
 
 // Composition root: picks the concrete implementations behind each port.
@@ -16,6 +18,8 @@ const app = createApp(
     userManagement: users,
     patients: new PrismaPatientRepository(prisma),
     reservations: new PrismaReservationRepository(prisma),
+    units: new PrismaUnitRepository(prisma),
+    beds: new PrismaBedRepository(prisma),
     passwordHasher: new ScryptPasswordHasher(),
     tokens: new JwtTokenService({ secret: env.jwtSecret, expiresIn: env.jwtExpiresIn }),
   },

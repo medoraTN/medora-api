@@ -1,15 +1,21 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "../../../src/infrastructure/database/prisma/client";
+import { PrismaBedRepository } from "../../../src/infrastructure/database/repositories/prisma-bed.repository";
 import { PrismaPatientRepository } from "../../../src/infrastructure/database/repositories/prisma-patient.repository";
 import { PrismaReservationRepository } from "../../../src/infrastructure/database/repositories/prisma-reservation.repository";
+import { PrismaUnitRepository } from "../../../src/infrastructure/database/repositories/prisma-unit.repository";
 import { PrismaUserRepository } from "../../../src/infrastructure/database/repositories/prisma-user.repository";
 
 const patients = new PrismaPatientRepository(prisma);
 const reservations = new PrismaReservationRepository(prisma);
 const users = new PrismaUserRepository(prisma);
+const units = new PrismaUnitRepository(prisma);
+const beds = new PrismaBedRepository(prisma);
 const patientIds: string[] = [];
 const userIds: string[] = [];
 const reservationIds: string[] = [];
+const unitIds: string[] = [];
+const bedIds: string[] = [];
 
 function newPatient() {
   const id = randomUUID();
@@ -64,6 +70,11 @@ describe("Prisma repositories against PostgreSQL test database", () => {
   });
 
   afterAll(async () => {
+    await prisma.bedAssignmentHistory.deleteMany({
+      where: { OR: [{ bedId: { in: bedIds } }, { fromBedId: { in: bedIds } }, { toBedId: { in: bedIds } }] },
+    });
+    await prisma.bed.deleteMany({ where: { id: { in: bedIds } } });
+    await prisma.unit.deleteMany({ where: { id: { in: unitIds } } });
     await prisma.reservation.deleteMany({ where: { id: { in: reservationIds } } });
     await prisma.patient.deleteMany({ where: { id: { in: patientIds } } });
     await prisma.userAuditLog.deleteMany({
@@ -206,5 +217,64 @@ describe("Prisma repositories against PostgreSQL test database", () => {
     ]);
     expect(events.every((event) => event.actorUserId === actor.id)).toBe(true);
     expect(JSON.stringify(events)).not.toContain("new-hash");
+  });
+
+  it("persists units, beds, assignments, transfers and history", async () => {
+    const actor = await createUser();
+    const patient = await createPatient();
+    const unit = await units.create({ name: `Urgence-${randomUUID().slice(0, 8)}`, kind: "EMERGENCY" });
+    unitIds.push(unit.id);
+
+    const bedA = await beds.create({
+      unitId: unit.id,
+      code: "A-01",
+      type: "STANDARD",
+      status: "FREE",
+      currentPatientId: null,
+    });
+    const bedB = await beds.create({
+      unitId: unit.id,
+      code: "A-02",
+      type: "MONITORING",
+      status: "FREE",
+      currentPatientId: null,
+    });
+    bedIds.push(bedA.id, bedB.id);
+
+    await expect(beds.create({
+      unitId: unit.id,
+      code: "A-01",
+      type: "STANDARD",
+      status: "FREE",
+      currentPatientId: null,
+    })).rejects.toMatchObject({ code: "CONFLICT" });
+
+    const occupied = await beds.assignPatient(bedA.id, patient.id, actor.id);
+    expect(occupied).toMatchObject({ status: "OCCUPIED", currentPatientId: patient.id });
+    await expect(beds.assignPatient(bedA.id, patient.id, actor.id)).rejects.toMatchObject({
+      code: "BED_NOT_AVAILABLE",
+    });
+
+    const transferred = await beds.transferPatient(bedA.id, bedB.id, actor.id);
+    expect(transferred.from).toMatchObject({ id: bedA.id, status: "FREE", currentPatientId: null });
+    expect(transferred.to).toMatchObject({ id: bedB.id, status: "OCCUPIED", currentPatientId: patient.id });
+
+    const released = await beds.releasePatient(bedB.id, actor.id);
+    expect(released).toMatchObject({ status: "FREE", currentPatientId: null });
+
+    await expect(beds.list({ unitId: unit.id, status: "FREE" })).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: bedA.id }),
+        expect.objectContaining({ id: bedB.id }),
+      ]),
+    );
+    await expect(beds.list({ unitKind: "EMERGENCY" })).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: bedA.id })]),
+    );
+
+    const history = await beds.listHistory(bedB.id);
+    expect(history.map((entry) => entry.event)).toEqual(
+      expect.arrayContaining(["TRANSFERRED", "RELEASED"]),
+    );
   });
 });
